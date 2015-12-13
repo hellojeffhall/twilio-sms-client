@@ -2,8 +2,6 @@
 MESSAGE_TO=$1
 MESSAGE_BODY="${@:2}"
 
-echo $MESSAGE_BODY
-
 #
 # User can specify 'phonebook' entries in a file called
 # phonebook, to be placed in the same directory as this file.

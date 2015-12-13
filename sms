@@ -1,0 +1,136 @@
+#!/bin/bash
+MESSAGE_TO=$1
+MESSAGE_BODY="${@:2}"
+
+echo $MESSAGE_BODY
+
+#
+# User can specify 'phonebook' entries in a file called
+# phonebook, to be placed in the same directory as this file.
+#
+
+#
+# https://stackoverflow.com/questions/59895/
+# can-a-bash-script-tell-what-directory-its-stored-in
+#
+
+source "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/phonebook
+
+#
+# If the 'to' field starts with a letter, assume that the person
+# is referring to an entry in the phonebook.
+#
+
+if [[ $MESSAGE_TO =~ ^[a-zA-Z] ]] ; then
+
+  #
+  # Do the lookup
+  #
+
+  echo "Looking up \"$MESSAGE_TO\"..."
+
+  #
+  # https://stackoverflow.com/questions/17529220/
+  # why-should-eval-be-avoided-in-bash-and-what-should-i-use-instead
+  #
+  # Was using eval before but that is bad. Still need to learn how this 
+  # one works though.
+  #
+
+  MESSAGE_TO="${!MESSAGE_TO}"
+
+  #
+  # Make sure that a phonebook entry exists for that name.
+  #
+  
+  if [[ -z $MESSAGE_TO ]] ; then
+    echo "No matching phonebook entry found."
+    echo
+    echo "Please remember that phonebook entries are" \
+      "case-sensitive, and double-check that the given" \
+      "entry exists in the phonebook."
+    echo
+    echo "To make an entry to in phonebook, edit the file" \
+      "called \"phonebook\" or type:"
+    echo "echo [name]=[number] >> phonebook"
+    echo "(...without the square brackets...)"
+    exit 1
+  else
+    echo "Found as $MESSAGE_TO."
+    echo
+  fi 
+fi
+
+#
+# Set this to 1 if you are only sending messages to American numbers and
+# want USA-specific error messages.
+# Comment out or set this to anything else to be able to send messages to
+# numbers that don't match the standard American phone numbering system.
+#
+
+USA_ONLY=1
+
+#
+# Trap for the "to" number being given correctly.
+#
+
+if [ $USA_ONLY=1 ] ; then
+
+  #
+  # If we're only sending to American phone numbers,
+  # We want to make sure that the input...
+  # ...starts with "+1" for the USA country code ;
+  # ...has only 0-9 for the rest of the characters ;  
+  # ...the numeric portion of the string is 12 characters long. 
+  # (1 numeric character in "+1" , 3-digit area code , and 7-digit number.) 
+  #
+
+  if [[ ! $MESSAGE_TO =~ ^[+1][0-9]{11}$ ]]  ; then
+    echo "Please be sure that your \"to\" number was typed correctly." 
+    echo  "The format for American phone numbers is a \"+1\", followed by" \
+      "a three-digit area code, followed by a seven-digit phone number." 
+    echo "For example:" 
+    echo "+15551234567"
+    exit 1
+  fi
+
+else
+
+  #
+  # If we're not only sending to the US, then we just trap for no number given.
+  # If the input is incorrect, Twilio will still reject the request, but it will
+  # be uglier than if we were to catch it here.
+  # If you hav other formats that you want to support, you can also traps
+  # for them yourself.
+  #
+
+  if [[ ! $MESSAGE_TO =~ {1,} ]] ; then  
+    echo "Please be sure to enter a \"to\" phone number. The format for" \
+      "sending messages is:" 
+    echo "sms [phone number] [message]" 
+    echo "...without the square brackets, of course..."
+  fi
+
+fi
+
+#
+# Trap for no message given.
+#
+
+if [[ -z $MESSAGE_BODY ]] ; then
+  echo "Please do not forget to type a message to send." 
+  echo "The format for sending messages is:" 
+  echo "sms [phone number] [message]" 
+  echo "...without the square brackets, of course..."
+  exit 1
+fi
+
+echo "Send to: $MESSAGE_TO"
+echo "Message: $MESSAGE_BODY"
+
+curl --silent -X POST "https://api.twilio.com/2010-04-01/Accounts/$TWILIO_SID/Messages.json" \
+--data-urlencode "To=$MESSAGE_TO"  \
+--data-urlencode "From=$TWILIO_FROM"  \
+--data-urlencode "CallerId=$TWILIO_FROM"  \
+--data-urlencode "Body=$MESSAGE_BODY" \
+-u $TWILIO_SID:$TWILIO_AUTH > /dev/null && echo

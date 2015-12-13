@@ -1,1 +1,7 @@
+#!/bin/bash
+#
+# Add your contacts in this format:
+# [name]=[full phone number]
+# (...without the square brackets...)
+#
 me=$TWILIO_MY_OWN_NUMBER
